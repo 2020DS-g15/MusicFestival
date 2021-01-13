@@ -1,6 +1,4 @@
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map.Entry;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -14,7 +12,6 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet("/Main")
 public class Main extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-
 	/**
 	 * @see HttpServlet#HttpServlet()
 	 */
@@ -34,7 +31,12 @@ public class Main extends HttpServlet {
 		response.setCharacterEncoding("UTF-8");
 		request.setCharacterEncoding("UTF-8");
 		response.setContentType("text/html");
-
+		
+		int searchNum = 10;
+		if(request.getParameter("searchNum") != null) {
+			searchNum = Integer.parseInt(request.getParameter("searchNum"));
+		}
+		
 		// 進入搜尋頁面
 		if (request.getParameter("keyword") == null) {
 			String requestUri = request.getRequestURI();
@@ -44,20 +46,12 @@ public class Main extends HttpServlet {
 		}
 
 		// 搜尋
-		GoogleQuery google = new GoogleQuery(request.getParameter("keyword"), 10);
-		HashMap<String, String> query = google.query();
-
-		// 結果轉成矩陣
-		String[][] s = new String[query.size()][2];
+		System.out.println("Start searching " + request.getParameter("keyword") + "...");
+		System.out.println("---------------------------");
+		GoogleQuery google = new GoogleQuery(request.getParameter("keyword"), searchNum);
+		System.out.println(google.getResults());
+		String[][] s = google.query();
 		request.setAttribute("query", s);
-		int num = 0;
-		for (Entry<String, String> entry : query.entrySet()) {
-			String key = entry.getKey();
-			String value = entry.getValue();
-			s[num][0] = key;
-			s[num][1] = value;
-			num++;
-		}
 		request.getRequestDispatcher("googleitem.jsp").forward(request, response);
 	}
 
@@ -67,7 +61,6 @@ public class Main extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
 		doGet(request, response);
 	}
 

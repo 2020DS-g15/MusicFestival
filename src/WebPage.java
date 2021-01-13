@@ -1,21 +1,20 @@
 import java.io.IOException;
-import java.util.ArrayList;
+import java.net.SocketTimeoutException;
 
 public class WebPage {
 
 	public String title;
 	public String url;
-	public WordCounter counter;
-	public int score;
+	public WordCounter wordCounter;
 
-	public WebPage(String title, String url) {
+	public WebPage(String title, String url, KeywordList keywordList) throws IOException, SocketTimeoutException {
 		this.title = title;
 		this.url = url;
-		this.counter = new WordCounter(url);
+		this.wordCounter = new WordCounter(title, url, keywordList);
 	}
 
-	public void setScore() throws IOException {
-		score = counter.countScore();
+	public int getScore() {
+		return wordCounter.countScore();
 	}
 
 }

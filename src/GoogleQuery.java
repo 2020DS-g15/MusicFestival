@@ -1,11 +1,4 @@
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.PriorityQueue;
 
 import org.jsoup.Jsoup;
@@ -15,49 +8,91 @@ import org.jsoup.select.Elements;
 
 public class GoogleQuery {
 
+	//aaaaaaaaa
 	public String searchKeyword;
 	public int searchNum;
 	public String url;
 	public String content;
 	public PriorityQueue<WebNode> heap;
+	public KeywordList keywordList;
+	public String results;
+	public long startingTime;
 
-	public GoogleQuery(String searchKeyword, int searchNum) {
+	public GoogleQuery(String searchKeyword, int searchNum) throws IOException {
 		this.searchKeyword = searchKeyword;
 		this.searchNum = searchNum;
-		this.url = "http://www.google.com/search?q=" + searchKeyword + "&oe=utf8&num=" + 2 * searchNum;
+		setKeywords();
+		this.content = Content.fetchContent(url);
 		this.heap = new PriorityQueue<WebNode>(2 * searchNum, new WebComparator());
+		this.results = "";
+		this.startingTime = System.currentTimeMillis();
+		getUrl();
+		
+		
 	}
 
-	public PriorityQueue<WebNode> heap() throws IOException {
-		if (content == null) {
-			content = Content.fetchContent(url);
+	public void setKeywords() {
+		String[] tokens = searchKeyword.split(" ");
+		String keyword = "";
+		for (int i = 0; i < tokens.length; i++) {
+			keyword += tokens[i] + "+";
 		}
+		this.url = "http://www.google.com/search?q=" + keyword + "音樂節" + "&oe=utf8&num=" + 2 * searchNum;
+		this.keywordList = new KeywordList(tokens);
+//		System.out.println(keywordList.toString());
+	}
 
+	public void getUrl() {
 		Document doc = Jsoup.parse(content);
 		Elements links = doc.select("div.kCrYT > a");
-		System.out.println("lis siaze = " + links.size());
 
+		int okUrl = 0;
+		int readErrorUrl = 0;
 		for (Element link : links) {
+			
+			//title排錯
+			String title = link.select("h3").text();
+			if (title.equals("")) {
+				continue;
+			}
+
+			//取得網站連結, new webNode, add to heap
+			String url = "https://www.google.com" + link.attr("href");
 			try {
-				String title = link.select("h3").text();
-				if (title.equals("")) {
-					continue;
-				}
-				String url = "https://www.google.com" + link.attr("href");
-				WebNode node = new WebNode(new WebPage(title, url));
+				WebNode node = new WebNode(new WebPage(title, url, keywordList));
 				heap.offer(node);
-			} catch (IndexOutOfBoundsException e) {
-				e.printStackTrace();
+				okUrl++;
+				System.out.printf("%2d%s%n%s%d%n", okUrl, ": " + title, "    Score: ", node.nodeScore);
+//				System.out.println("    Text length: " + node.webPage.wordCounter.content.length());
+//				System.out.println("    Score: " + node.nodeScore);
+			} catch (Exception e) {
+				System.out.println("Skip: " + e.getMessage());
+				readErrorUrl++;
+				continue;
 			}
 		}
-		
-		return heap;
+		results += "-----Searching Results-----\n";
+		results += "Keyword: " + searchKeyword + "\n";
+		results += "Search website: " + 2 * searchNum + "\n";
+		results += "Fine website: " + okUrl + "\n";
+		results += "Read error website: " + readErrorUrl + "\n";
+		results += "---------------------------" + "\n";
+		results += "Searching Time: " + ((System.currentTimeMillis() - startingTime) / 1000) + " sec.\n\n";
+	}
+	
+	public String getResults() {
+		return results;
 	}
 
-	public HashMap<String, String> query() throws IOException {
-		HashMap<String, String> retVal = new HashMap<String, String>();
-		for(int i = 0; i < searchNum; i++) {
-			retVal.put(heap.poll().webPage.title, heap.poll().webPage.url);
+	public String[][] query() throws IOException {
+		String[][] retVal = new String[searchNum][2];
+		for (int i = 0; i < searchNum; i++) {
+			WebNode k;
+			if ((k = heap.poll()) != null) {
+				retVal[i][0] = k.webPage.title;
+				retVal[i][1] = k.webPage.url;
+//				System.out.println(k.webPage.title + " score : " + k.nodeScore);
+			}
 		}
 		return retVal;
 	}
